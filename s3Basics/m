@@ -1,0 +1,53 @@
+Multipart upload allows you to upload a single object as a set of parts. Each part is a contiguous portion of the object's data. You can upload these object parts independently and in any order. If transmission of any part fails, you can retransmit that part without affecting other parts. After all parts of your object are uploaded, Amazon S3 assembles these parts and creates the object. In general, when your object size reaches 100 MB, you should consider using multipart uploads instead of uploading the object in a single operation.
+
+Using multipart upload provides the following advantages:
+
+Improved throughput – You can upload parts in parallel to improve throughput.
+
+Quick recovery from any network issues – Smaller part size minimizes the impact of restarting a failed upload due to a network error.
+
+Pause and resume object uploads – You can upload object parts over time. After you initiate a multipart upload, there is no expiry; you must explicitly complete or stop the multipart upload.
+
+Begin an upload before you know the final object size – You can upload an object as you are creating it.
+
+var initiateRequest = new InitiateMultipartUploadRequest
+{
+    BucketName = bucketName,
+    Key = keyName
+};
+var initResponse = await s3Client.InitiateMultipartUploadAsync(initiateRequest);
+string uploadId = initResponse.UploadId;
+
+var partSize = 5 * 1024 * 1024; // 5 MB
+long filePosition = 0;
+List<UploadPartResponse> uploadResponses = new List<UploadPartResponse>();
+
+using (FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+{
+    for (int i = 1; filePosition < fileStream.Length; i++)
+    {
+        var uploadRequest = new UploadPartRequest
+        {
+            BucketName = bucketName,
+            Key = keyName,
+            UploadId = uploadId,
+            PartNumber = i,
+            PartSize = partSize,
+            InputStream = fileStream
+        };
+
+        uploadResponses.Add(await s3Client.UploadPartAsync(uploadRequest));
+        filePosition += partSize;
+    }
+}
+
+var completeRequest = new CompleteMultipartUploadRequest
+{
+    BucketName = bucketName,
+    Key = keyName,
+    UploadId = uploadId
+};
+
+completeRequest.AddPartETags(uploadResponses);
+await s3Client.CompleteMultipartUploadAsync(completeRequest);
+Console.WriteLine("Multipart upload completed.");
