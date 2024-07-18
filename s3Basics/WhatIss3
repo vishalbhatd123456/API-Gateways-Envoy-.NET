@@ -1,0 +1,4 @@
+s3 is a key value storage that Amazon themselves uses for their storage
+most popularily it is used as a deployment scheme 
+s3 provides high availablility, scalability and global region support , security and performance
+s3 can store anything in this world
